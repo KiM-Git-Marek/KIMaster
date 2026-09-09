@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Konfi V10 – PRO100 multi-select + przesuwanie</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:13px Arial,sans-serif;background:#e9e5df;color:#222}
+.app{height:100vh;display:grid;grid-template-columns:440px 1fr}
+aside{background:#fff;border-right:1px solid #d8d3cd;padding:18px;overflow:auto}
+h1{margin:0;font-size:24px}.sub{color:#777;margin:4px 0 15px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tabs button{flex:1;padding:10px;border:1px solid #ccc;background:#f8f8f8;border-radius:8px;cursor:pointer}
+.tabs .on{background:#222;color:#fff}
+.sec{border-top:1px solid #e4e0db;padding:14px 0}.sec:first-of-type{border-top:0}
+.sec h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#555;margin:0 0 10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+label{display:block;font-size:11px;color:#666;margin-bottom:4px}
+input,select,button.action{width:100%;height:38px;border:1px solid #cec9c3;border-radius:7px;background:#fff;padding:0 8px}
+input[type=color]{padding:3px}
+.check{display:flex;align-items:center;gap:7px;margin:8px 0}.check input{width:auto;height:auto}
+.card{background:#f5f6f8;border:1px solid #dfe2e7;border-radius:10px;padding:12px}
+.adminHead{background:#263444;color:#fff;padding:10px 12px;border-radius:8px;margin-bottom:10px;font-weight:bold}
+.hint{font-size:11px;color:#777;line-height:1.45}
+.stage{position:relative;overflow:hidden}
+.stage canvas{display:block;width:100%;height:100%}
+.badge{position:absolute;top:16px;left:16px;background:#ffffffdf;border:1px solid #ddd7d0;border-radius:10px;padding:10px 13px;z-index:3}
+.badge b,.badge span{display:block}.badge span{color:#777;font-size:11px;margin-top:3px}
+.coords{position:absolute;right:16px;bottom:16px;background:#ffffffdd;padding:9px 11px;border-radius:8px;color:#555;font-size:11px;z-index:3}
+.hidden{display:none!important}
+.elementList{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.elementList button{height:35px;border:1px solid #d3cec8;border-radius:7px;background:#fff;cursor:pointer;font-size:12px}
+.elementList button.on{background:#24364b;color:#fff;border-color:#24364b}
+.status{font-size:11px;color:#666;margin-top:8px}
+.palette{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
+.matBtn{height:44px;border:1px solid #ccc;border-radius:7px;cursor:pointer;background:#fff;padding:3px;font-size:9px}
+.matBtn i{display:block;height:23px;border-radius:4px;margin-bottom:2px}
+.matBtn.on{outline:2px solid #24364b}
+.origin{background:#fff8e8;border:1px solid #ead49a;padding:10px;border-radius:8px;margin-bottom:12px;font-size:12px;line-height:1.5}
+.toolbar{display:flex;gap:6px;margin:8px 0 12px}
+.toolbar button{flex:1;height:36px;border:1px solid #cfc9c2;border-radius:7px;background:#fff;cursor:pointer;font-size:12px}
+.toolbar button.on{background:#24364b;color:#fff;border-color:#24364b}
+.selectionBox{background:#eef3f8;border:1px solid #ced9e5;border-radius:9px;padding:10px;margin-bottom:12px;line-height:1.45}
+.selectionBox b{display:block;margin-bottom:3px}
+.multiNote{font-size:11px;color:#5b6570;margin-top:6px}
+@media(max-width:950px){.app{grid-template-columns:1fr;grid-template-rows:58vh 42vh}aside{border-right:0}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div class="app">
+<aside>
+  <h1>Konfi V10</h1>
+  <div class="sub">Układ PRO100 • pełne pomieszczenie • kolory + drewno</div>
+
+  <div class="origin">
+    <b>Układ współrzędnych:</b><br>
+    X = od lewej • Y = od spodu • Z = od tyłu.<br>
+    Każda pozycja elementu oznacza jego <b>lewy-dolny-tylny narożnik</b>, nie środek.
+  </div>
+
+  <div class="tabs">
+    <button id="tabRoom" class="on">POMIESZCZENIE</button>
+    <button id="tabBase">MEBEL</button>
+    <button id="tabAdmin">ADMIN</button>
+  </div>
+
+  <div id="roomPanel">
+    <div class="sec card">
+      <h2>Gabaryt pomieszczenia [mm]</h2>
+      <div class="grid3">
+        <div><label>Szerokość X</label><input id="roomW" type="number" value="3600" step="10"></div>
+        <div><label>Wysokość Y</label><input id="roomH" type="number" value="2600" step="10"></div>
+        <div><label>Głębokość Z</label><input id="roomD" type="number" value="3200" step="10"></div>
+      </div>
+    </div>
+
+    <div class="sec card">
+      <h2>Ściana tylna</h2>
+      <label class="check"><input id="backWallOn" type="checkbox" checked> Widoczna</label>
+      <div class="grid2">
+        <div><label>Szerokość</label><input id="backWallW" type="number" value="3600" step="10"></div>
+        <div><label>Wysokość</label><input id="backWallH" type="number" value="2600" step="10"></div>
+        <div><label>Grubość</label><input id="backWallT" type="number" value="100" step="10"></div>
+        <div><label>Kolor</label><input id="backWallColor" type="color" value="#d8d3cc"></div>
+      </div>
+    </div>
+
+    <div class="sec card">
+      <h2>Druga ściana</h2>
+      <div>
+        <label>Położenie</label>
+        <select id="sideWallSide">
+          <option value="none">Brak</option>
+          <option value="left" selected>Lewa</option>
+          <option value="right">Prawa</option>
+        </select>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Długość / głębokość</label><input id="sideWallD" type="number" value="3200" step="10"></div>
+        <div><label>Wysokość</label><input id="sideWallH" type="number" value="2600" step="10"></div>
+        <div><label>Grubość</label><input id="sideWallT" type="number" value="100" step="10"></div>
+        <div><label>Kolor</label><input id="sideWallColor" type="color" value="#d8d3cc"></div>
+      </div>
+    </div>
+
+    <div class="sec card">
+      <h2>Podłoga</h2>
+      <label class="check"><input id="floorOn" type="checkbox" checked> Widoczna</label>
+      <div class="grid2">
+        <div><label>Grubość</label><input id="floorT" type="number" value="80" step="10"></div>
+        <div><label>Materiał</label>
+          <select id="floorMat">
+            <option value="solid">Kolor</option>
+            <option value="oak" selected>Dąb naturalny</option>
+            <option value="walnut">Orzech</option>
+            <option value="ash">Jesion</option>
+            <option value="wenge">Wenge</option>
+          </select>
+        </div>
+        <div><label>Kolor bazowy</label><input id="floorColor" type="color" value="#b99168"></div>
+      </div>
+    </div>
+
+    <div class="sec card">
+      <h2>Sufit</h2>
+      <label class="check"><input id="ceilingOn" type="checkbox" checked> Widoczny</label>
+      <div class="grid2">
+        <div><label>Grubość</label><input id="ceilingT" type="number" value="100" step="10"></div>
+        <div><label>Kolor</label><input id="ceilingColor" type="color" value="#f4f2ee"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="basePanel" class="hidden">
+    <div class="sec card">
+      <h2>Pozycja i gabaryt mebla [mm]</h2>
+      <div class="grid3">
+        <div><label>X od lewej</label><input id="cabX" type="number" value="300" step="10"></div>
+        <div><label>Y od spodu</label><input id="cabY" type="number" value="0" step="10"></div>
+        <div><label>Z od tyłu</label><input id="cabZ" type="number" value="0" step="10"></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div><label>Szerokość</label><input id="cabW" type="number" value="600" step="10"></div>
+        <div><label>Wysokość</label><input id="cabH" type="number" value="850" step="10"></div>
+        <div><label>Głębokość</label><input id="cabD" type="number" value="560" step="10"></div>
+        <div><label>Poziom dna od spodu</label><input id="cabBottom" type="number" value="100" step="10"></div>
+      </div>
+      <div style="margin-top:8px"><button class="action" id="resetStandard">Przebuduj model standardowy</button></div>
+    </div>
+  </div>
+
+  <div id="adminPanel" class="hidden">
+    <div class="adminHead">ADMIN • KAŻDY ELEMENT NIEZALEŻNIE</div>
+
+    <div class="toolbar">
+      <button id="modeMove" class="on">Przesuwaj</button>
+      <button id="clearSelection">Wyczyść zaznaczenie</button>
+    </div>
+
+    <div class="selectionBox">
+      <b id="selectionCount">Zaznaczenie: 1 element</b>
+      <span>Ctrl + klik na modelu lub nazwie elementu = dodaj/usuń z grupy.</span>
+      <div class="multiNote">Przy wielu elementach ruch działa grupowo, a materiał i kolor są stosowane do całego zaznaczenia.</div>
+    </div>
+
+    <div class="sec">
+      <h2>Element konstrukcyjny</h2>
+      <div class="elementList" id="elementList"></div>
+    </div>
+
+    <div class="sec card">
+      <h2 id="selectedName">Wybrany element</h2>
+      <label class="check"><input id="elVisible" type="checkbox" checked> Widoczny</label>
+
+      <h2 style="margin-top:12px">Rozmiar [mm]</h2>
+      <div class="grid3">
+        <div><label>Szerokość X</label><input id="elW" type="number" step="1"></div>
+        <div><label>Wysokość Y</label><input id="elH" type="number" step="1"></div>
+        <div><label>Głębokość Z</label><input id="elD" type="number" step="1"></div>
+      </div>
+
+      <h2 style="margin-top:12px">Lokalizacja PRO100 [mm]</h2>
+      <div class="grid3">
+        <div><label>Od lewej X</label><input id="elX" type="number" step="1"></div>
+        <div><label>Od spodu Y</label><input id="elY" type="number" step="1"></div>
+        <div><label>Od tyłu Z</label><input id="elZ" type="number" step="1"></div>
+      </div>
+
+      <h2 style="margin-top:12px">Materiał / kolor</h2>
+      <div class="grid2">
+        <div><label>Materiał</label>
+          <select id="elMaterial">
+            <option value="solid">Kolor jednolity</option>
+            <option value="oak">Dąb naturalny</option>
+            <option value="walnut">Orzech</option>
+            <option value="ash">Jesion</option>
+            <option value="wenge">Wenge</option>
+          </select>
+        </div>
+        <div><label>Kolor bazowy</label><input id="elColor" type="color"></div>
+      </div>
+
+      <div class="palette" id="materialPalette">
+        <button class="matBtn" data-mat="solid"><i style="background:#d8d3cc"></i>Kolor</button>
+        <button class="matBtn" data-mat="oak"><i style="background:linear-gradient(90deg,#c59b68,#a97945,#d0ae7e,#9d7043)"></i>Dąb</button>
+        <button class="matBtn" data-mat="walnut"><i style="background:linear-gradient(90deg,#6e472d,#3d281e,#7b5132,#4a3022)"></i>Orzech</button>
+        <button class="matBtn" data-mat="ash"><i style="background:linear-gradient(90deg,#d8c7a6,#bba987,#e4d6ba,#aa987b)"></i>Jesion</button>
+        <button class="matBtn" data-mat="wenge"><i style="background:linear-gradient(90deg,#30251f,#16110f,#44342c,#211915)"></i>Wenge</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div id="summary" class="hint"></div>
+    <div id="status" class="status">Uruchamianie Konfi…</div>
+  </div>
+</aside>
+
+<main class="stage">
+  <div class="badge"><b>Konfi V10 • PRO100</b><span id="badgeInfo"></span></div>
+  <div class="coords">0,0,0 = lewy • spód • tył pomieszczenia</div>
+</main>
+</div>
+
+<script type="module">
+import * as THREE from "three";
+import {OrbitControls} from "three/addons/controls/OrbitControls.js";
+import {TransformControls} from "three/addons/controls/TransformControls.js";
+
+const $=id=>document.getElementById(id);
+const stage=document.querySelector(".stage");
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xe9e5df);
+
+const camera=new THREE.PerspectiveCamera(38,1,.05,100);
+camera.position.set(4.8,3.2,5.8);
+
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.08;
+stage.appendChild(renderer.domElement);
+
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;
+controls.target.set(1.8,1.2,1.2);
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x777777,2.0));
+const sun=new THREE.DirectionalLight(0xffffff,3.2);sun.position.set(4,6,5);sun.castShadow=true;scene.add(sun);
+
+const axes=new THREE.AxesHelper(1.0);scene.add(axes);
+
+const transform=new TransformControls(camera,renderer.domElement);
+scene.add(transform);
+transform.setMode("translate");
+transform.setSpace("world");
+transform.setTranslationSnap(0.001);
+transform.addEventListener("dragging-changed",e=>controls.enabled=!e.value);
+
+const pivot=new THREE.Object3D();
+scene.add(pivot);
+
+const raycaster=new THREE.Raycaster();
+const mouse=new THREE.Vector2();
+const selectedKeys=new Set();
+const helpers={};
+let dragStartPivot=new THREE.Vector3();
+let dragStartData={};
+
+const roomMeshes={};
+const meshes={};
+const woodTextures={};
+
+function woodTexture(kind){
+  if(woodTextures[kind]) return woodTextures[kind];
+  const c=document.createElement("canvas");c.width=512;c.height=256;
+  const ctx=c.getContext("2d");
+  const palettes={
+    oak:["#c9a06e","#a97946","#d8b783","#93683e"],
+    walnut:["#6d472d","#3e291d","#7e5433","#4a3021"],
+    ash:["#d8c7a6","#b9a785","#e7d9bd","#a79579"],
+    wenge:["#2e231e","#171210","#423129","#211815"]
+  };
+  const pal=palettes[kind]||palettes.oak;
+  ctx.fillStyle=pal[0];ctx.fillRect(0,0,c.width,c.height);
+  for(let i=0;i<90;i++){
+    const y=Math.random()*c.height;
+    ctx.strokeStyle=pal[i%pal.length];
+    ctx.globalAlpha=.18+Math.random()*.28;
+    ctx.lineWidth=.5+Math.random()*2.2;
+    ctx.beginPath();
+    ctx.moveTo(0,y);
+    for(let x=0;x<=c.width;x+=24){
+      ctx.lineTo(x,y+Math.sin((x+i*13)/32)*2.5+Math.random()*1.5);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  const tex=new THREE.CanvasTexture(c);
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+  tex.colorSpace=THREE.SRGBColorSpace;
+  woodTextures[kind]=tex;
+  return tex;
+}
+
+function makeMaterial(type,color,metal=false){
+  if(type!=="solid"){
+    const tex=woodTexture(type).clone();
+    tex.needsUpdate=true;
+    tex.repeat.set(2,2);
+    return new THREE.MeshStandardMaterial({map:tex,roughness:.45});
+  }
+  if(metal) return new THREE.MeshStandardMaterial({color,metalness:.8,roughness:.22});
+  return new THREE.MeshPhysicalMaterial({color,roughness:.26,clearcoat:.18});
+}
+
+const defs={
+ bottom:{name:"Wieniec dolny"},
+ left:{name:"Bok lewy"},
+ right:{name:"Bok prawy"},
+ topFront:{name:"Listwa górna przód"},
+ topBack:{name:"Listwa górna tył"},
+ back:{name:"Plecy"},
+ front:{name:"Front"},
+ handle:{name:"Uchwyt"},
+ plinthFront:{name:"Cokół przód"},
+ plinthLeft:{name:"Cokół lewy"},
+ plinthRight:{name:"Cokół prawy"},
+ legFL:{name:"Noga przód lewa"},
+ legFR:{name:"Noga przód prawa"},
+ legBL:{name:"Noga tył lewa"},
+ legBR:{name:"Noga tył prawa"}
+};
+
+let data={},selected="bottom";
+
+function meshFromCorner(key){
+  if(meshes[key]){scene.remove(meshes[key]);delete meshes[key];}
+  const d=data[key];if(!d||!d.visible)return;
+  const metal=key==="handle"||key.startsWith("leg");
+  const mat=makeMaterial(d.material,d.color,metal);
+  const m=new THREE.Mesh(new THREE.BoxGeometry(d.w/1000,d.h/1000,d.d/1000),mat);
+  // PRO100: x/y/z = lewy-dolny-tylny narożnik elementu.
+  m.position.set((d.x+d.w/2)/1000,(d.y+d.h/2)/1000,(d.z+d.d/2)/1000);
+  m.castShadow=true;m.receiveShadow=true;m.userData.elementKey=key;scene.add(m);meshes[key]=m;
+}
+
+function roomBox(key,w,h,d,x,y,z,material){
+  if(roomMeshes[key])scene.remove(roomMeshes[key]);
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w/1000,h/1000,d/1000),material);
+  m.position.set((x+w/2)/1000,(y+h/2)/1000,(z+d/2)/1000);
+  m.receiveShadow=true;scene.add(m);roomMeshes[key]=m;
+}
+
+function rebuildRoom(){
+  Object.keys(roomMeshes).forEach(k=>{scene.remove(roomMeshes[k]);delete roomMeshes[k]});
+  const RW=+$("roomW").value,RH=+$("roomH").value,RD=+$("roomD").value;
+
+  if($("backWallOn").checked){
+    const w=+$("backWallW").value,h=+$("backWallH").value,t=+$("backWallT").value;
+    roomBox("back",w,h,t,0,0,-t,makeMaterial("solid",$("backWallColor").value));
+  }
+
+  const side=$("sideWallSide").value;
+  if(side!=="none"){
+    const d=+$("sideWallD").value,h=+$("sideWallH").value,t=+$("sideWallT").value;
+    const x=side==="left"?-t:RW;
+    roomBox("side",t,h,d,x,0,0,makeMaterial("solid",$("sideWallColor").value));
+  }
+
+  if($("floorOn").checked){
+    const t=+$("floorT").value;
+    roomBox("floor",RW,t,RD,0,-t,0,makeMaterial($("floorMat").value,$("floorColor").value));
+  }
+
+  if($("ceilingOn").checked){
+    const t=+$("ceilingT").value;
+    roomBox("ceiling",RW,t,RD,0,RH,0,makeMaterial("solid",$("ceilingColor").value));
+  }
+}
+
+function standard(){
+  const X=+$("cabX").value,Y=+$("cabY").value,Z=+$("cabZ").value;
+  const W=+$("cabW").value,H=+$("cabH").value,D=+$("cabD").value,B=+$("cabBottom").value;
+  const t=18,ft=20,bt=3,railD=100,plH=80,plT=18;
+  const bodyH=H-B;
+
+  data={
+    bottom:{w:W,h:t,d:D,x:X,y:Y+B,z:Z,color:"#cfc8be",material:"solid",visible:true},
+    left:{w:t,h:bodyH,d:D,x:X,y:Y+B,z:Z,color:"#cfc8be",material:"solid",visible:true},
+    right:{w:t,h:bodyH,d:D,x:X+W-t,y:Y+B,z:Z,color:"#cfc8be",material:"solid",visible:true},
+    topFront:{w:W,h:t,d:railD,x:X,y:Y+H-t,z:Z+D-railD,color:"#cfc8be",material:"solid",visible:true},
+    topBack:{w:W,h:t,d:railD,x:X,y:Y+H-t,z:Z,color:"#cfc8be",material:"solid",visible:true},
+    back:{w:W,h:bodyH,d:bt,x:X,y:Y+B,z:Z,color:"#b9b3ac",material:"solid",visible:true},
+    front:{w:W-4,h:bodyH-4,d:ft,x:X+2,y:Y+B+2,z:Z+D+2,color:"#f7f7f3",material:"solid",visible:true},
+    handle:{w:180,h:18,d:18,x:X+(W-180)/2,y:Y+H-80,z:Z+D+35,color:"#777777",material:"solid",visible:true},
+    plinthFront:{w:W,h:plH,d:plT,x:X,y:Y,z:Z+D-70,color:"#262626",material:"solid",visible:true},
+    plinthLeft:{w:plT,h:plH,d:D-70,x:X,y:Y,z:Z,color:"#262626",material:"solid",visible:false},
+    plinthRight:{w:plT,h:plH,d:D-70,x:X+W-plT,y:Y,z:Z,color:"#262626",material:"solid",visible:false},
+    legFL:{w:40,h:B,d:40,x:X+40,y:Y,z:Z+D-90,color:"#111111",material:"solid",visible:true},
+    legFR:{w:40,h:B,d:40,x:X+W-80,y:Y,z:Z+D-90,color:"#111111",material:"solid",visible:true},
+    legBL:{w:40,h:B,d:40,x:X+40,y:Y,z:Z+50,color:"#111111",material:"solid",visible:true},
+    legBR:{w:40,h:B,d:40,x:X+W-80,y:Y,z:Z+50,color:"#111111",material:"solid",visible:true}
+  };
+  Object.keys(defs).forEach(meshFromCorner);
+  selectedKeys.clear(); selectedKeys.add("bottom"); selected="bottom";
+  loadSelected();updatePivotFromSelection();updateSummary();
+}
+
+
+function clearHelpers(){
+  Object.values(helpers).forEach(h=>scene.remove(h));
+  Object.keys(helpers).forEach(k=>delete helpers[k]);
+}
+
+function refreshHelpers(){
+  clearHelpers();
+  selectedKeys.forEach(key=>{
+    const m=meshes[key];
+    if(!m)return;
+    const h=new THREE.BoxHelper(m,0x1f5f9b);
+    scene.add(h);
+    helpers[key]=h;
+  });
+}
+
+function updatePivotFromSelection(){
+  transform.detach();
+  if(selectedKeys.size===0){
+    clearHelpers();
+    $("selectionCount").textContent="Zaznaczenie: brak";
+    return;
+  }
+  const box=new THREE.Box3();
+  let has=false;
+  selectedKeys.forEach(key=>{
+    const m=meshes[key];
+    if(m){box.expandByObject(m);has=true;}
+  });
+  if(!has)return;
+  const center=new THREE.Vector3();
+  box.getCenter(center);
+  pivot.position.copy(center);
+  transform.attach(pivot);
+  refreshHelpers();
+  $("selectionCount").textContent=`Zaznaczenie: ${selectedKeys.size} ${selectedKeys.size===1?"element":"elementy"}`;
+}
+
+function selectKey(key,additive=false){
+  if(!additive) selectedKeys.clear();
+  if(additive && selectedKeys.has(key)){
+    selectedKeys.delete(key);
+  }else{
+    selectedKeys.add(key);
+    selected=key;
+  }
+  if(selectedKeys.size===1) selected=[...selectedKeys][0];
+  loadSelected();
+  updatePivotFromSelection();
+  updateSummary();
+}
+
+function clearSelection(){
+  selectedKeys.clear();
+  transform.detach();
+  clearHelpers();
+  $("selectionCount").textContent="Zaznaczenie: brak";
+  document.querySelectorAll("#elementList button").forEach(b=>b.classList.remove("on"));
+}
+
+function saveDragStart(){
+  dragStartPivot.copy(pivot.position);
+  dragStartData={};
+  selectedKeys.forEach(key=>{
+    const d=data[key];
+    if(d) dragStartData[key]={x:d.x,y:d.y,z:d.z};
+  });
+}
+
+function applyGroupDrag(){
+  const delta=pivot.position.clone().sub(dragStartPivot);
+  selectedKeys.forEach(key=>{
+    const d=data[key], start=dragStartData[key];
+    if(!d||!start)return;
+    d.x=start.x+delta.x*1000;
+    d.y=start.y+delta.y*1000;
+    d.z=start.z+delta.z*1000;
+    meshFromCorner(key);
+  });
+  refreshHelpers();
+  if(selectedKeys.size===1) loadSelected();
+  updateSummary();
+}
+
+transform.addEventListener("mouseDown",saveDragStart);
+transform.addEventListener("objectChange",applyGroupDrag);
+
+renderer.domElement.addEventListener("pointerdown",e=>{
+  if(transform.dragging)return;
+  const rect=renderer.domElement.getBoundingClientRect();
+  mouse.x=((e.clientX-rect.left)/rect.width)*2-1;
+  mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(mouse,camera);
+  const hits=raycaster.intersectObjects(Object.values(meshes),false);
+  if(hits.length){
+    const key=hits[0].object.userData.elementKey;
+    if(key) selectKey(key,e.ctrlKey||e.metaKey);
+  }else if(!(e.ctrlKey||e.metaKey)){
+    clearSelection();
+  }
+});
+
+function makeButtons(){
+  const list=$("elementList");
+  Object.entries(defs).forEach(([key,v])=>{
+    const b=document.createElement("button");b.textContent=v.name;b.dataset.key=key;
+    b.onclick=(e)=>{selectKey(key,e.ctrlKey||e.metaKey)};
+    list.appendChild(b);
+  });
+}
+
+function loadSelected(){
+  if(selectedKeys.size===0){
+    $("selectedName").textContent="Brak zaznaczenia";
+    return;
+  }
+
+  if(selectedKeys.size>1){
+    $("selectedName").textContent=`Grupa: ${selectedKeys.size} elementy`;
+    ["elW","elH","elD","elX","elY","elZ"].forEach(id=>$(id).disabled=true);
+    $("elVisible").disabled=false;
+    $("elMaterial").disabled=false;
+    $("elColor").disabled=false;
+    const first=data[[...selectedKeys][0]];
+    $("elVisible").checked=[...selectedKeys].every(k=>data[k].visible);
+    $("elMaterial").value=first.material;
+    $("elColor").value=first.color;
+  }else{
+    selected=[...selectedKeys][0];
+    const d=data[selected];if(!d)return;
+    $("selectedName").textContent=defs[selected].name;
+    ["elW","elH","elD","elX","elY","elZ"].forEach(id=>$(id).disabled=false);
+    $("elVisible").disabled=false;
+    $("elMaterial").disabled=false;
+    $("elColor").disabled=false;
+    $("elVisible").checked=d.visible;
+    $("elW").value=d.w;$("elH").value=d.h;$("elD").value=d.d;
+    $("elX").value=d.x;$("elY").value=d.y;$("elZ").value=d.z;
+    $("elMaterial").value=d.material;$("elColor").value=d.color;
+  }
+
+  document.querySelectorAll("#elementList button").forEach(b=>b.classList.toggle("on",selectedKeys.has(b.dataset.key)));
+  document.querySelectorAll(".matBtn").forEach(b=>b.classList.toggle("on",b.dataset.mat===$("elMaterial").value));
+}
+function applySelected(){
+  if(selectedKeys.size===0)return;
+
+  if(selectedKeys.size>1){
+    selectedKeys.forEach(key=>{
+      const d=data[key];if(!d)return;
+      d.visible=$("elVisible").checked;
+      d.material=$("elMaterial").value;
+      d.color=$("elColor").value;
+      meshFromCorner(key);
+    });
+  }else{
+    selected=[...selectedKeys][0];
+    const d=data[selected];if(!d)return;
+    d.visible=$("elVisible").checked;
+    d.w=+$("elW").value;d.h=+$("elH").value;d.d=+$("elD").value;
+    d.x=+$("elX").value;d.y=+$("elY").value;d.z=+$("elZ").value;
+    d.material=$("elMaterial").value;d.color=$("elColor").value;
+    meshFromCorner(selected);
+  }
+  updatePivotFromSelection();
+  updateSummary();
+  document.querySelectorAll(".matBtn").forEach(b=>b.classList.toggle("on",b.dataset.mat===$("elMaterial").value));
+}
+function updateSummary(){
+  if(selectedKeys.size===0){
+    $("badgeInfo").textContent="Brak zaznaczenia";
+    $("summary").innerHTML="Ctrl + klik pozwala tworzyć grupy zaznaczenia.";
+    return;
+  }
+  if(selectedKeys.size>1){
+    $("badgeInfo").textContent=`Grupa • ${selectedKeys.size} elementy`;
+    const names=[...selectedKeys].map(k=>defs[k].name).join(", ");
+    $("summary").innerHTML=`<b>Grupa ${selectedKeys.size} elementów</b><br>${names}<br>Materiał i kolor działają grupowo. Uchwyt 3D przesuwa całą grupę.`;
+    return;
+  }
+  selected=[...selectedKeys][0];
+  const d=data[selected];if(!d)return;
+  $("badgeInfo").textContent=`${defs[selected].name} • X ${Math.round(d.x)} • Y ${Math.round(d.y)} • Z ${Math.round(d.z)}`;
+  $("summary").innerHTML=`<b>${defs[selected].name}</b><br>Rozmiar: ${Math.round(d.w)} × ${Math.round(d.h)} × ${Math.round(d.d)} mm<br>Pozycja PRO100: od lewej ${Math.round(d.x)} • od spodu ${Math.round(d.y)} • od tyłu ${Math.round(d.z)} mm<br>Materiał: ${d.material}`;
+}
+["elVisible","elW","elH","elD","elX","elY","elZ","elMaterial","elColor"].forEach(id=>{
+  $(id).addEventListener("input",applySelected);$(id).addEventListener("change",applySelected);
+});
+
+document.querySelectorAll(".matBtn").forEach(b=>{
+  b.onclick=()=>{$("elMaterial").value=b.dataset.mat;applySelected()};
+});
+
+["roomW","roomH","roomD","backWallOn","backWallW","backWallH","backWallT","backWallColor",
+ "sideWallSide","sideWallD","sideWallH","sideWallT","sideWallColor",
+ "floorOn","floorT","floorMat","floorColor","ceilingOn","ceilingT","ceilingColor"].forEach(id=>{
+   $(id).addEventListener("input",rebuildRoom);$(id).addEventListener("change",rebuildRoom);
+});
+
+$("resetStandard").onclick=standard;
+$("clearSelection").onclick=clearSelection;
+$("modeMove").onclick=()=>{transform.setMode("translate");$("modeMove").classList.add("on")};
+
+function show(panel,tab){
+  ["roomPanel","basePanel","adminPanel"].forEach(id=>$(id).classList.add("hidden"));
+  ["tabRoom","tabBase","tabAdmin"].forEach(id=>$(id).classList.remove("on"));
+  $(panel).classList.remove("hidden");$(tab).classList.add("on");
+}
+$("tabRoom").onclick=()=>show("roomPanel","tabRoom");
+$("tabBase").onclick=()=>show("basePanel","tabBase");
+$("tabAdmin").onclick=()=>{show("adminPanel","tabAdmin");loadSelected();updatePivotFromSelection()};
+
+function resize(){
+  renderer.setSize(stage.clientWidth,stage.clientHeight,false);
+  camera.aspect=stage.clientWidth/stage.clientHeight;camera.updateProjectionMatrix();
+}
+addEventListener("resize",resize);
+resize();makeButtons();rebuildRoom();standard();
+$("status").textContent="Konfi V10 działa • współrzędne od lewej / spodu / tyłu • pomieszczenie i drewno aktywne.";
+
+(function loop(){requestAnimationFrame(loop);controls.update();renderer.render(scene,camera)})();
+</script>
+</body>
+</html>
